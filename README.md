@@ -14,7 +14,7 @@ An audio encoder that uses React / Electron / fluent-ffmpeg & ffmpeg-static
 
 ### @TODO
 
-... a lot ;-)
+Well ... a lot ;-)
 
 - handle parameters update
   - user should be able to choose the export format
@@ -41,5 +41,35 @@ There is no documentation for fluent-ffmpeg for each codec and there parameters
     },
 ```
 
+- progress bar (global / per file)
+- reset ui when it is done
+- handle errors
+- nice UI
+- internationalization (https://github.com/i18next/react-i18next)
+- menus https://electronjs.org/docs/api/menu ?
 
-- Real UI
+- it couls also be interresting to use 
+
+
+```javascript
+ffmpeg.getAvailableCodecs((err, result) => {
+      console.log('available codecs', result)
+    })
+
+    ffmpeg.availableFormats((err, result) => {
+      console.log('available formats', result)
+    })
+
+    ffmpeg.availableEncoders((err, result) => {
+      console.log('available encoders', result)
+    })
+```
+to get format / encoders / codecs and so on... BUT
+- Is there a way to get each codec parameters ?
+- Is there a way to get the relation between format <-> codec <-> encoder ? 
+
+
+### Shortcuts
+
+- reload electron window `ctrl + r`
+- open dev tools `ctrl + i`

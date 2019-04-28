@@ -1,6 +1,8 @@
 import React, { Component } from 'react'
 import FileChooser from './components/files/file-chooser.jsx'
 import FileList from './components/files/file-list.jsx'
+import ExportFormat from './components/parameters/export-format.jsx'
+import FolderChooser from './components/parameters/folder-chooser'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { fab } from '@fortawesome/free-brands-svg-icons'
@@ -16,61 +18,36 @@ library.add(
 )
 
 import ffmpegStatic from 'ffmpeg-static'
+import {ipcRenderer, remote} from 'electron'
 const ffmpeg = require('fluent-ffmpeg')
 const path = require('path')
-
-const remote = require('electron').remote
 const app = remote.app
-
 
 class App extends Component {
   constructor(props) {
     super(props)
 
-    // c'est bien moche....
+    // so ugly...
     const ffmpegPath = ffmpegStatic.path.replace(__dirname, './node_modules/ffmpeg-static')
     ffmpeg.setFfmpegPath(ffmpegPath)
-
-    ffmpeg.getAvailableCodecs((err, result) => {
-      console.log('available codecs', result)
-    })
-
-    ffmpeg.availableFormats((err, result) => {
-      console.log('available formats', result)
-    })
-
-    ffmpeg.availableEncoders((err, result) => {
-      console.log('available encoders', result)
-    })
-
-    /*
-    Quelques trucs à vérifier...
-    - paramètres de chaque codec
-    - quels codecs / format
-    - quel conteneurs pour les codecs
-    - bitrate en bit/s ?* => vrai pour ffmpeg mais pas pour fluent-ffmpeg
-    - paramètre "Qualité" => q , comment on gère entre ça et l'ensemble des autres paramètres ?
-      - y'en a qui surchargent les autres ?
-
-    * par exemple j'ai trouvé ça
-    Also, note the bitrate is in bits/s, not the usual kbits/s. 
-    The default bitrate is 96000 (96 kbits/s), which is (of course arguably) a fine value. 
-    Sample command to summarize: ffmpeg -i input.flac -acodec libopus -b:a 128000 output.opus
-*/
 
     this.initialState = {
       ffmpeg: ffmpeg,
       files: [],
       parameters: {
         destinationPath: app.getPath('music'),
-        format: {
-          name: 'AAC',
-          codec: 'aac',
-          extension: 'm4a',
-          format: 'mp4',
-          bitrate: 256,
+        selectedFormat: {
+          name: 'Ogg',
+          format: 'ogg',
+          codec: 'libvorbis',
+          extension: 'ogg',
           samplerate: 48000,
-          q: 5
+          samplerates: [44100, 48000],
+          q: 10,
+          qRange: {
+            min:0,
+            max:10
+          }
         }
       },
       availableFormats: [
@@ -79,34 +56,39 @@ class App extends Component {
           codec: 'libmp3lame',
           extension: 'mp3',
           format: 'mp3',
-          bitrates: [128, 192, 256],
-          samplerates: [44100, 48000]
+          samplerate: 48000,
+          samplerates: [44100, 48000],
+          q: 0,
+          qRange: {
+            min:0,
+            max:10
+          }
         },
         {
           name: 'AAC',
-          codec: 'libfdk_aac',
+          codec: 'libfaac',
           extension: 'm4a',
-          format: 'aac',
-          bitrates: [128, 192, 256],
+          format: 'mp4',
+          samplerate: 48000,
           samplerates: [44100, 48000],
-          q: 5
+          q: 5,
+          qRange: {
+            min:1,
+            max:5
+          }
         },
         {
-          name: 'Ogg Opus',
-          format: 'opus',
-          codec: 'libopus',
+          name: 'Ogg',
+          format: 'ogg',
+          codec: 'libvorbis',
           extension: 'ogg',
-          bitrates: [128, 192, 256],
-          samplerates: [44100, 48000]
-        },
-        {
-          extension: 'opus',
-          format: 'opus',
-          bitrate: 256,
-          samplerate: 44100,
-          codec: 'libopus',
-          name: 'Ogg Opus',
-          q: 10
+          samplerate: 48000,
+          samplerates: [44100, 48000],
+          q: 10,
+          qRange: {
+            min:0,
+            max:10
+          }
         }
       ]
     }
@@ -116,15 +98,14 @@ class App extends Component {
 
   componentDidMount() {
     $('[data-toggle="tooltip"]').tooltip()
-  }
-
-  addFiles(fileList) {
-    const added = []
-    Object.keys(fileList).forEach(index => {
-      added.push(fileList[index])
+    // event sent from main process
+    ipcRenderer.on('files-update', (event, files) => {
+      const added = []
+      files.forEach(filePath => {
+        added.push(filePath)
+      })
+      this.setState(Object.assign(this.state, { files: this.state.files.concat(added) }))
     })
-
-    this.setState(Object.assign(this.state, { files: this.state.files.concat(added) }))
   }
 
   deleteFile(index) {
@@ -134,54 +115,70 @@ class App extends Component {
   }
 
   encode() {
-    this.state.files.forEach(file => {
-      const destination = this.state.parameters.destinationPath + '/' + path.parse(file.name).name + '.' + this.state.parameters.format.extension
+    this.state.files.forEach((file, index) => {
+      const destination = this.state.parameters.destinationPath + '/' + path.parse(file).name + '.' + this.state.parameters.selectedFormat.extension
 
-      console.log(this.state.parameters.format)
-      ffmpeg(file.path)
+      console.log('start processing file @index ' + index)
+      ffmpeg(file)
         //.audioBitrate(96) // will force constant bit rate... 
-        .audioQuality(this.state.parameters.format.q) // will allow variable bit rate (better) but range depends on codec / format
-        .audioCodec(this.state.parameters.format.codec)
-        .audioFrequency(this.state.parameters.format.samplerate)
-        .toFormat(this.state.parameters.format.format)
-        .save(destination)
+        .audioQuality(this.state.parameters.selectedFormat.q) // will allow variable bit rate (better) but range depends on codec / format
+        .audioCodec(this.state.parameters.selectedFormat.codec)
+        .audioFrequency(this.state.parameters.selectedFormat.samplerate)
+        .toFormat(this.state.parameters.selectedFormat.format)        
         .on('progress', (progress) => {
           console.log('Processing: ' + progress.percent + '% done')
-        })
+        })/*
         .on('stderr', (stderrLine) => {
           // console.log('Stderr output: ' + stderrLine)
-        })
+        })*/
         .on('error', (err) => {
           console.log('An error occurred: ' + err.message)
         })
         .on('end', (stdout, stderr) => {
-          console.log('Transcoding succeeded !', stdout, stderr)
+          console.log('Transcoding succeeded !')
+          //console.log('Transcoding succeeded !', stdout, stderr)
         })
+        .save(destination)
     })
 
-    this.setState(Object.assign({}, this.initialState))
+    //this.setState(Object.assign({}, this.initialState))
+    //ipcRenderer.send('reset-files', 'NOW!')
+  }
 
-    // should set the state to initial state
+  updateDestFolder(path) {
+    this.setState(Object.assign(this.state.parameters, {destinationPath: path}))
+  }
+
+  updateExportFormat(format) {
+    this.setState(Object.assign(this.state.parameters, {selectedFormat: format}))
+  }
+
+  updateCurrentFormatProperty(prop, value) {
+    const updatedFormat = Object.assign({}, this.state.parameters.selectedFormat)
+    updatedFormat[prop] = value
+    this.setState(Object.assign(this.state.parameters, {selectedFormat: updatedFormat}))
   }
 
   render() {
     return (
       <div className="container">
         <hr />
-        <FileChooser onChange={(files) => this.addFiles(files)} />
-        <hr />
-        <div>
-          {this.state.files.length === 0 ?
-            <div>Aucun fichier</div>
-            :
-            <div>
-              <FileList files={this.state.files} onDelete={(index) => this.deleteFile(index)} />
-            </div>
-          }
+        <div className="row">
+          <div className="col">
+            <ExportFormat onFormatPropertyChange={(prop, value) => this.updateCurrentFormatProperty(prop, value)} available={this.state.availableFormats} current={this.state.parameters.selectedFormat} onChange={(format) => this.updateExportFormat(format)} />
+          </div>
         </div>
-
+        <hr />       
+        <FileList files={this.state.files} onDelete={(index) => this.deleteFile(index)} />
         <hr />
-        <button onClick={() => this.encode()} className="btn btn-light"><FontAwesomeIcon icon="trash" />GO</button>
+        <div className="row">
+          <div className="col">
+            <FolderChooser title="Choisir le dossier de destination" current={this.state.parameters.destinationPath} onChange={(path) => this.updateDestFolder(path)} />
+          </div>
+          <div className="col text-right">          
+            <button data-toggle="tooltip" title="Encoder les fichiers sélectionnés" onClick={() => this.encode()} className="btn btn-link text-dark"><FontAwesomeIcon icon="file-export" /></button>
+          </div>
+        </div>
       </div>
     )
   }
