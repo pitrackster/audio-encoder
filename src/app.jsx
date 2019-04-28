@@ -118,7 +118,7 @@ class App extends Component {
     this.state.files.forEach((file, index) => {
       const destination = this.state.parameters.destinationPath + '/' + path.parse(file).name + '.' + this.state.parameters.selectedFormat.extension
 
-      console.log('start processing file @index ' + index)
+      //console.debug('start processing file @index ' + index)
       ffmpeg(file)
         //.audioBitrate(96) // will force constant bit rate... 
         .audioQuality(this.state.parameters.selectedFormat.q) // will allow variable bit rate (better) but range depends on codec / format
@@ -126,23 +126,17 @@ class App extends Component {
         .audioFrequency(this.state.parameters.selectedFormat.samplerate)
         .toFormat(this.state.parameters.selectedFormat.format)        
         .on('progress', (progress) => {
-          console.log('Processing: ' + progress.percent + '% done')
-        })/*
-        .on('stderr', (stderrLine) => {
-          // console.log('Stderr output: ' + stderrLine)
-        })*/
+          // @TODO should update a progress bar for the corresponding file
+        })
         .on('error', (err) => {
-          console.log('An error occurred: ' + err.message)
+          // @TODO the UI should show that this file is on error
         })
         .on('end', (stdout, stderr) => {
-          console.log('Transcoding succeeded !')
-          //console.log('Transcoding succeeded !', stdout, stderr)
+          // console.log('Transcoding succeeded !')
+          // @TODO: if no error for this file, splice it from state.files ?
         })
         .save(destination)
     })
-
-    //this.setState(Object.assign({}, this.initialState))
-    //ipcRenderer.send('reset-files', 'NOW!')
   }
 
   updateDestFolder(path) {

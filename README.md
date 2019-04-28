@@ -17,38 +17,19 @@ An audio encoder that uses React / Electron / fluent-ffmpeg & ffmpeg-static
 Well ... a lot ;-)
 
 - handle parameters update
-  - user should be able to choose the export format
-  - user should be able to choose where to export encoded files
-  - the program should use export format settings
+  - ~~user should be able to choose the export format~~
+  - ~~user should be able to choose where to export encoded files~~
+  - ~~the app should use export format settings~~
 
-- export settings.
-
-Depending on the export format parameters could differ
-There is no documentation for fluent-ffmpeg for each codec and there parameters
-
-``` javascript
-    {
-        name: 'MP3',
-        codec: 'libmp3lame',
-        extension: 'mp3',
-        format: 'mp3',
-        bitrates: [128, 192, 256], // useless if we want to use VBR
-        samplerates: [44100, 48000],
-        q: {
-            min:0, // best quality
-            max:9
-        }
-    },
-```
-
-- progress bar (global / per file)
-- reset ui when it is done
-- handle errors
+- progress bar (global ? / per file ?)
+- handle errors, check if ffmpeg can read selected files ...
 - nice UI
-- internationalization (https://github.com/i18next/react-i18next)
-- menus https://electronjs.org/docs/api/menu ?
-
-- it couls also be interresting to use 
+- [internationalization  / translations](https://github.com/i18next/react-i18next)
+- electron [menus](https://electronjs.org/docs/api/menu) ?
+- tests \\(°_O)/
+- make release(s)
+- test it on mac / windows
+- it could also be interresting to use 
 
 
 ```javascript
@@ -69,7 +50,32 @@ to get format / encoders / codecs and so on... BUT
 - Is there a way to get the relation between format <-> codec <-> encoder ? 
 
 
-### Shortcuts
+```javascript
+    ffmpeg('path/to/file.wav')
+        .audioBitrate(96) // will force constant bit rate... range highly depends on codec
+        .audioQuality(this.state.parameters.selectedFormat.q) // will allow variable bit rate which is better than CBR... range depends on codec
+        .audioCodec(this.state.parameters.selectedFormat.codec)
+        .audioFrequency(this.state.parameters.selectedFormat.samplerate)
+        .toFormat(this.state.parameters.selectedFormat.format)        
+        .on('progress', (progress) => {
+          console.log('Processing: ' + progress.percent + '% done')
+        })
+        .on('stderr', (stderrLine) => {
+          console.log('Stderr output: ' + stderrLine) // very verbose
+        })
+        .on('error', (err) => {
+          console.log('An error occurred: ' + err.message)
+        })
+        .on('end', (stdout, stderr) => {
+            // stdout is very verbose... see if it is useful to have it...
+          console.log('Transcoding succeeded !', stdout, stderr)
+        })
+        .save(destination)
+    })
+```
+
+
+### Electron usefull Shortcuts
 
 - reload electron window `ctrl + r`
 - open dev tools `ctrl + i`
