@@ -76,11 +76,14 @@ Menu.setApplicationMenu(menu)
 const createWindow = () => {
 
   window = new BrowserWindow({ 
+    title: 'Simple Audio Encoder',
+    //frame: false,
     width: 800, 
     height: 600,
     webPreferences: {
       nodeIntegration: true
-    } 
+    },
+    icon: path.join(__dirname, './../assets/icons/Music-Amp.png')
   })
 
   window.loadURL(
@@ -90,6 +93,10 @@ const createWindow = () => {
       slashes: true
     })
   )
+
+  window.on('page-title-updated', (evt) => {
+    evt.preventDefault()
+  })
 
   window.on('closed', () => {
     window = null

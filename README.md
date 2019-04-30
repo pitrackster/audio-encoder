@@ -27,7 +27,9 @@ Well ... a lot ;-)
 - [internationalization  / translations](https://github.com/i18next/react-i18next)
 - electron [menus](https://electronjs.org/docs/api/menu) ?
 - tests \\(°_O)/
-- make release(s)
+- make release(s) (ie build app)
+- add app icon
+- when file explorer open on linux it shows : Electron "" is ready... what is that ?
 - test it on mac / windows
 - it could also be interresting to use 
 
